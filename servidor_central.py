@@ -31,7 +31,7 @@ async def manejar_conexion(websocket):
                 await websocket.send(json.dumps({"tipo": "REGISTRO_EXITOSO", "id": dispositivo_id}))
 
             elif accion in ("CONECTAR", "SOLICITAR_CONEXION"):
-                id_objetivo = str(datos.get("id_objetivo") or datos.get("destino"))
+                id_objetivo = str(datos.get("id_objetivo") or datos.get("destino") or datos.get("para_id"))
                 if id_objetivo in DISPOSITIVOS:
                     await DISPOSITIVOS[id_objetivo].send(json.dumps({
                         "tipo": "PETICION_CONEXION",
@@ -53,13 +53,12 @@ async def manejar_conexion(websocket):
                         "estado": datos.get("estado")
                     }))
 
-            # RELAY OPTIMIZADO PARA 60 FPS
             elif accion == "RELAY":
-                id_destino = str(datos.get("destino") or datos.get("id_objetivo"))
+                id_destino = str(datos.get("id_objetivo") or datos.get("para_id") or datos.get("destino"))
                 if id_destino in DISPOSITIVOS:
                     await DISPOSITIVOS[id_destino].send(json.dumps({
                         "tipo": "DATA",
-                        "contenido": datos.get("contenido")
+                        "contenido": datos.get("contenido") or datos.get("data")
                     }))
 
     except websockets.exceptions.ConnectionClosed:
@@ -77,7 +76,7 @@ async def main():
         ping_interval=10, 
         ping_timeout=10,
         max_size=None,
-        write_limit=1048576  # Buffer expandido para soportar alta tasa de refresco
+        write_limit=1048576
     ):
         await asyncio.Future()
 
