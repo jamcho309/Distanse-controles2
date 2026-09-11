@@ -67,11 +67,9 @@ async def manejar_conexion(websocket):
             print(f"[-] Dispositivo {dispositivo_id} desconectado.", flush=True)
 
 async def main():
-    # Toma el PORT asignado por Railway o usa 8080 por defecto
     puerto = int(os.environ.get("PORT", 8080))
     print(f"=== SERVIDOR CENTRAL INICIANDO EN PUERTO {puerto} ===", flush=True)
     
-    # Se agrega ping_interval y ping_timeout para mantener viva la conexión WebSocket
     async with websockets.serve(
         manejar_conexion, 
         "0.0.0.0", 
