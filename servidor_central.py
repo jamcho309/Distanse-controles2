@@ -19,12 +19,12 @@ async def manejar_conexion(websocket):
             datos = json.loads(mensaje)
             accion = datos.get("accion")
 
+            # 1. REGISTRO DE DISPOSITIVO
             if accion == "REGISTRAR":
                 id_solicitado = datos.get("id_fijo")
                 
-                # Si el equipo envía un ID guardado y no está ocupado, se lo asignamos
                 if id_solicitado and id_solicitado not in DISPOSITIVOS:
-                    dispositivo_id = id_solicitado
+                    dispositivo_id = str(id_solicitado)
                 else:
                     dispositivo_id = generar_id_unico()
 
@@ -36,30 +36,41 @@ async def manejar_conexion(websocket):
                     "id": dispositivo_id
                 }))
 
-            elif accion == "CONECTAR":
-                id_objetivo = datos.get("id_objetivo")
+            # 2. SOLICITUD DE CONEXIÓN
+            elif accion in ("CONECTAR", "SOLICITAR_CONEXION"):
+                id_objetivo = str(datos.get("id_objetivo") or datos.get("destino"))
+                password_enviado = datos.get("password")
+
                 if id_objetivo in DISPOSITIVOS:
                     host_ws = DISPOSITIVOS[id_objetivo]
                     
+                    # Notificar a la PC destino sobre la petición incluyendo el ID real del solicitante
                     await host_ws.send(json.dumps({
                         "tipo": "PETICION_CONEXION",
-                        "cliente_id": id(websocket)
-                    }))
-                    
-                    await websocket.send(json.dumps({
-                        "tipo": "ESTADO_CONEXION",
-                        "exito": True,
-                        "mensaje": "Conectado al dispositivo."
+                        "de_id": dispositivo_id,
+                        "password": password_enviado
                     }))
                 else:
                     await websocket.send(json.dumps({
-                        "tipo": "ESTADO_CONEXION",
-                        "exito": False,
-                        "mensaje": "ID no encontrado o desconectado."
+                        "tipo": "RESPUESTA_CONEXION",
+                        "estado": "DENEGADO",
+                        "mensaje": "ID no encontrado o fuera de línea."
                     }))
 
+            # 3. RESPUESTA A LA SOLICITUD (Aceptar/Rechazar)
+            elif accion == "RESPUESTA_CONEXION":
+                id_solicitante = str(datos.get("id_objetivo") or datos.get("para_id"))
+                estado = datos.get("estado")
+
+                if id_solicitante in DISPOSITIVOS:
+                    await DISPOSITIVOS[id_solicitante].send(json.dumps({
+                        "tipo": "RESPUESTA_CONEXION",
+                        "estado": estado
+                    }))
+
+            # 4. TRANSMISIÓN DE PANTALLA Y DATOS (RELAY)
             elif accion == "RELAY":
-                id_destino = datos.get("destino")
+                id_destino = str(datos.get("destino") or datos.get("id_objetivo"))
                 if id_destino in DISPOSITIVOS:
                     await DISPOSITIVOS[id_destino].send(json.dumps({
                         "tipo": "DATA",
@@ -77,12 +88,14 @@ async def main():
     puerto = int(os.environ.get("PORT", 8080))
     print(f"=== SERVIDOR CENTRAL INICIANDO EN PUERTO {puerto} ===", flush=True)
     
+    # max_size=None permite recibir capturas de pantalla de alto peso sin desconectar
     async with websockets.serve(
         manejar_conexion, 
         "0.0.0.0", 
         puerto, 
         ping_interval=20, 
-        ping_timeout=20
+        ping_timeout=20,
+        max_size=None
     ):
         await asyncio.Future()
 
