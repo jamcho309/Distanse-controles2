@@ -87,13 +87,13 @@ async def main():
         manejar_conexion, 
         "0.0.0.0", 
         puerto, 
-        ping_interval=10, 
-        ping_timeout=10,
+        ping_interval=30,      # Aumentado para evitar desconexiones por tráfico pesado
+        ping_timeout=30,       # Aumentado para evitar timeout por frames de video
         max_size=None,
-        write_limit=1048576
+        max_queue=32,          # Cola más grande para soportar el flujo constante
+        write_limit=2097152    # Límite de escritura ampliado a 2MB
     ):
         await asyncio.Future()
 
 if __name__ == "__main__":
     asyncio.run(main())
-    
