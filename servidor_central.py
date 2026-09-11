@@ -55,11 +55,25 @@ async def manejar_conexion(websocket):
 
             elif accion == "RELAY":
                 id_destino = str(datos.get("id_objetivo") or datos.get("para_id") or datos.get("destino"))
+                sub_tipo = datos.get("tipo")
+
                 if id_destino in DISPOSITIVOS:
-                    await DISPOSITIVOS[id_destino].send(json.dumps({
-                        "tipo": "DATA",
-                        "contenido": datos.get("contenido") or datos.get("data")
-                    }))
+                    # Si es un evento de entrada (mouse/teclado)
+                    if sub_tipo == "EVENTO_INPUT":
+                        await DISPOSITIVOS[id_destino].send(json.dumps({
+                            "tipo": "EVENTO_INPUT",
+                            "sub_tipo": datos.get("sub_tipo"),
+                            "x": datos.get("x"),
+                            "y": datos.get("y"),
+                            "boton": datos.get("boton"),
+                            "key": datos.get("key")
+                        }))
+                    else:
+                        # Si es un frame de pantalla normal
+                        await DISPOSITIVOS[id_destino].send(json.dumps({
+                            "tipo": "DATA",
+                            "contenido": datos.get("contenido") or datos.get("data")
+                        }))
 
     except websockets.exceptions.ConnectionClosed:
         pass
@@ -82,3 +96,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+    
