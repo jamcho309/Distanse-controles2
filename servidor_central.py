@@ -20,7 +20,14 @@ async def manejar_conexion(websocket):
             accion = datos.get("accion")
 
             if accion == "REGISTRAR":
-                dispositivo_id = generar_id_unico()
+                id_solicitado = datos.get("id_fijo")
+                
+                # Si el equipo envía un ID guardado y no está ocupado, se lo asignamos
+                if id_solicitado and id_solicitado not in DISPOSITIVOS:
+                    dispositivo_id = id_solicitado
+                else:
+                    dispositivo_id = generar_id_unico()
+
                 DISPOSITIVOS[dispositivo_id] = websocket
                 print(f"[+] Dispositivo registrado con ID: {dispositivo_id}", flush=True)
                 
@@ -79,5 +86,7 @@ async def main():
     ):
         await asyncio.Future()
 
+if __name__ == "__main__":
+    asyncio.run(main())
 if __name__ == "__main__":
     asyncio.run(main())
